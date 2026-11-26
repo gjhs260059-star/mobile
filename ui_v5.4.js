@@ -1348,6 +1348,7 @@
         if (commit) saveSettings();
       });
     });
+    if (NT.Calib) button("내게 맞는 감도 찾기 (테스트)", "🎯 감도 찾기", function () { NT.Calib.open(); });
     button("감도 기본값으로", "초기화", function () {
       settings.sensitivity = Object.assign({}, NT.DEFAULT_SENS);
       if (runner) runner.setSens(settings.sensitivity);
@@ -1702,6 +1703,13 @@
     openThemes: openThemes,
     openSettings: openSettings,
     openResults: openResults,
+    openView: openView,
+    setSens: function (k, v) {         // set_sens (used by calib_v5.4.js)
+      var r = NT.SENS_RANGE[k];
+      settings.sensitivity[k] = clamp(Math.trunc(v), r[0], r[1]);
+      if (runner) runner.setSens(settings.sensitivity);
+      saveSettings();
+    },
     showOverCard: showOverCard,
     openReplay: null,
     onMultiAgain: null,

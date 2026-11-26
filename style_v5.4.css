@@ -376,3 +376,9 @@ button {
 .note.cyant { color: var(--cyan); }
 .row input[type=range]:disabled { opacity: 0.4; }
 .btn:disabled.tog { opacity: 0.4; }
+
+/* 감도 찾기 (calib_v5.4.js) */
+.calibHelp { white-space: pre-wrap; font-size: 12px; }
+.calibRes { white-space: pre-wrap; min-height: 4.5em; }
+.calibPad { display: flex; gap: 10px; height: 84px; margin-top: 8px; }
+.calibPad .bigbtn { touch-action: none; }
