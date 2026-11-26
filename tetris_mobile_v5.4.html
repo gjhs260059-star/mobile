@@ -6,9 +6,12 @@
   T-spin, perfect clear, level mode) + touch controls + menus + settings.
   Stage 2: sprint 40 lines, TOP 5, detailed / cumulative stats, achievements,
   6 themes + custom theme, effects, sound settings (BGM / SFX), background image.
+  Stage 3: replays - every game recorded (seeded GameCore re-simulation), list / player
+  (0.5x~4x, seek bar, pause, step, ±5s), stored compressed in localStorage (max 30).
   Files: core_v5.4.js (game logic, window.NT) · stores_v5.4.js (records / stats / achievements)
          themes_v5.4.js (themes + block styles) · effects_v5.4.js (particles / banners)
          audio_v5.4.js (Web Audio SFX + BGM) · calib_v5.4.js (감도 찾기) · ui_v5.4.js (canvas / input / menus) · style_v5.4.css
+         replay_v5.4.js (recorder / store / player / replay pages)
 -->
 <html lang="ko">
 <head>
@@ -80,7 +83,7 @@
     <button class="btn" id="mSprint">스프린트 모드 (40줄)</button>
     <button class="btn" id="mStats">기록 및 통계</button>
     <button class="btn" id="mMulti" disabled>멀티플레이 (온라인 대전)<span class="tag">준비 중</span></button>
-    <button class="btn" id="mReplay" disabled>리플레이<span class="tag">준비 중</span></button>
+    <button class="btn" id="mReplay">리플레이</button>
     <button class="btn" id="mAch">업적</button>
     <button class="btn" id="mTheme">스킨 및 테마</button>
     <button class="btn" id="mSettings">설정</button>
@@ -106,6 +109,7 @@
     <h2 style="color:var(--pink)" id="overTitle">GAME OVER</h2>
     <div class="res" id="overInfo"></div>
     <button class="btn" id="oResult">📊 결과</button>
+    <button class="btn" id="oReplay" style="display:none">🎬 리플레이</button>
     <button class="btn" id="oAgain">다시 하기</button>
     <button class="btn pink" id="oMenu">☰ 메뉴</button>
   </div>
@@ -134,5 +138,6 @@
 <script src="audio_v5.4.js"></script>
 <script src="calib_v5.4.js"></script>
 <script src="ui_v5.4.js"></script>
+<script src="replay_v5.4.js"></script>
 </body>
 </html>

@@ -382,3 +382,44 @@ button {
 .calibRes { white-space: pre-wrap; min-height: 4.5em; }
 .calibPad { display: flex; gap: 10px; height: 84px; margin-top: 8px; }
 .calibPad .bigbtn { touch-action: none; }
+
+/* ================= stage 3: replays (replay_v5.4.js) ================= */
+.rpNote { font-size: 12px; margin-bottom: 4px; }
+.rpList { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.rpItem { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 9px 10px;
+          min-height: 52px; border: 1px solid var(--grid); border-radius: 10px; background: var(--btn);
+          color: var(--text); touch-action: manipulation; }
+.rpItem.on { border-color: var(--cyan); background: var(--cyan); color: var(--bg); }
+.rpTop, .rpBot { display: flex; align-items: baseline; gap: 8px; width: 100%; }
+.rpDate { font-size: 12px; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.rpMode { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--cyan); }
+.rpMode.sprint, .rpMode.multi { color: var(--pink); }
+.rpItem.on .rpMode { color: var(--bg); }
+.rpRes { font-size: 15px; font-weight: 800; }
+.rpDur { margin-left: auto; font-size: 12px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.rpEmpty { padding: 16px 0; text-align: center; color: var(--dim); }
+
+.rpBody { padding-top: 4px; }
+.rpTitle { font-size: 12px; line-height: 1.35; color: var(--text); margin-bottom: 6px; white-space: pre-wrap; }
+.rpMain { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; justify-content: center; }
+.rpBoard { position: relative; flex: 0 0 auto; border: 2px solid var(--cyan); border-radius: 3px; background: var(--bg); }
+.rpBoard canvas { display: block; }
+.rpFx { position: absolute; left: 0; top: 0; pointer-events: none; }
+.rpSide { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.rpScore { font-size: 15px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
+.rpLines { font-size: 13px; font-weight: 800; color: var(--pink); }
+.rpTime { font-size: 12px; font-weight: 800; color: var(--cyan); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.rpMini { align-self: flex-start; }
+.rpStat { font-size: 11px; line-height: 1.45; color: var(--dim); white-space: pre-wrap; margin-top: 4px; }
+
+.rpProg { position: relative; height: 28px; margin: 10px 0 8px; border: 1px solid var(--cyan); border-radius: 4px;
+          background: var(--bg); touch-action: none; cursor: pointer; overflow: hidden; }
+.rpFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--cyan); pointer-events: none; }
+.rpKnob { position: absolute; top: 0; bottom: 0; width: 6px; margin-left: -3px; left: 0; background: var(--pink);
+          pointer-events: none; }
+.rpBtns { display: flex; gap: 6px; margin-bottom: 6px; }
+.rpBtns .btn { flex: 1 1 0; width: auto; min-height: 46px; font-size: 15px; padding: 6px 4px; }
+.rpBtns .btn.rpPlay { flex: 1.4 1 0; }
+.rpBtns .btn.rpSpd.on { background: var(--cyan); color: var(--bg); }
+.rpHelp { font-size: 11px; }
+@media (pointer: coarse) { .rpHelp { display: none; } }

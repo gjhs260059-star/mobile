@@ -93,8 +93,12 @@
   var DEFAULT_SENS = { das: DAS, arr: ARR, soft_delay: SOFT_DELAY, soft_arr: SOFT_ARR };
   var SENS_RANGE = { das: [40, 400], arr: [5, 150], soft_delay: [20, 300], soft_arr: [5, 150] };
 
-  // replay event codes
-  var EV = { LEFT: 0, RIGHT: 1, SOFT: 2, CW: 3, CCW: 4, HARD: 5, HOLD: 6, GRAV: 7, LOCK: 8 };
+  // replay event codes (0-8 = tetris.py). v5.4 additions so every mode replays exactly:
+  //   GARB / GARB_AWAIT: one garbage line received (multiplayer) before / during a line clear
+  //   LVL_ON / LVL_OFF (+ _AWAIT): level mode toggled during a classic game (set_level_mode),
+  //                    before / during a line clear
+  var EV = { LEFT: 0, RIGHT: 1, SOFT: 2, CW: 3, CCW: 4, HARD: 5, HOLD: 6, GRAV: 7, LOCK: 8,
+             GARB: 9, GARB_AWAIT: 10, LVL_ON: 11, LVL_OFF: 12, LVL_ON_AWAIT: 13, LVL_OFF_AWAIT: 14 };
 
   // ==========================================================
   // Rules / limits (tetris.py section 6)
@@ -504,6 +508,7 @@
   /** multiplayer hook: opponent attack arrives (applied on the next lock without a clear) */
   GP.receive_garbage = function (n) {
     n = Math.max(0, Math.trunc(n) || 0);
+    if (n && this.on_garbage) this.on_garbage(n, this.awaiting !== null);   // replay recorder hook
     this.incoming += n;
     return this.incoming;
   };
@@ -703,6 +708,10 @@
                              this.mode === "multi" ? o.rules : null,
                              this.mode === "multi" ? o.limits : null);
     this.level_mode = lm;
+    var self = this;
+    this.core.on_garbage = function (n, awaiting) {      // replay: garbage is an input too
+      for (var i = 0; i < n; i++) self._emit("record", self.clock.ms(), awaiting ? EV.GARB_AWAIT : EV.GARB);
+    };
     this.clock.reset();
     this.clock_locked = false;
     this.started = false;
@@ -727,6 +736,10 @@
   RP.setLevelMode = function (on) {
     this.opts.levelMode = !!on;
     if (this.mode === "classic") {
+      if (this.core.level_mode !== !!on) {
+        var aw = this.core.awaiting !== null;
+        this._emit("record", this.clock.ms(), on ? (aw ? EV.LVL_ON_AWAIT : EV.LVL_ON) : (aw ? EV.LVL_OFF_AWAIT : EV.LVL_OFF));
+      }
       this.level_mode = !!on;
       this.core.level_mode = !!on;
     }

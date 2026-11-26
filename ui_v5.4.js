@@ -12,7 +12,9 @@
  *                         summary.replay], summary(summary)
  *   NT.UI.startGame({mode, seed, rules, limits})   classic / sprint / (stage 4) multi
  *   NT.UI.finalizeGame(outcome)   "gameover" / "cleared" / "win" / "aborted" (stats for any mode)
- *   NT.UI.stores, NT.UI.fx, NT.UI.spec.*, NT.UI.openReplay (stage 3 sets it)
+ *   NT.UI.stores, NT.UI.fx, NT.UI.spec.*, NT.UI.openReplay (set by replay_v5.4.js)
+ * Stage 3: replays (replay_v5.4.js) - every game is recorded; drawBoardCore is shared with
+ *          the replay player like tetris.py draw_board.
  */
 (function (global) {
   "use strict";
@@ -257,7 +259,7 @@
    "bHold", "bSoft", "bCcw", "bPause", "status", "controls", "bLeft", "bRot", "bRight",
    "pgMenu", "pgPause", "pgOver", "pgSettings", "pgView", "settingsBody", "viewBody", "vTitle", "vBack",
    "menuSub", "menuBest", "mClassic", "mLevel", "mSprint", "mStats", "mAch", "mTheme",
-   "mSettings", "pResume", "pRestart", "pMenu", "pauseInfo", "oResult", "oAgain", "oMenu", "overInfo", "overTitle",
+   "mSettings", "pResume", "pRestart", "pMenu", "pauseInfo", "oResult", "oReplay", "oAgain", "oMenu", "overInfo", "overTitle",
    "sBack", "bgFile"].forEach(function (id) { el[id] = $(id); });
 
   var ctx = el.board.getContext("2d");
@@ -348,13 +350,13 @@
     });
   }
 
-  function drawBoard() {
-    var g = ctx, c = cell, core = runner ? runner.core : null;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  /** draw_board: background / grid / stack / line-clear flash / ghost / piece.
+   *  The live game and the replay (replay_v5.4.js) share it. anim = [rows, step] or null */
+  function drawBoardCore(g, core, c, anim, bg) {
     g.fillStyle = th.C_BG;
     g.fillRect(0, 0, W * c, H * c);
-    if (bgCanvas) g.drawImage(bgCanvas, 0, 0, W * c, H * c);
-    drawGrid(g, c, bgCanvas ? (th.C_GRID_IMG || "#4A4F73") : th.C_GRID);
+    if (bg) g.drawImage(bg, 0, 0, W * c, H * c);
+    drawGrid(g, c, bg ? (th.C_GRID_IMG || "#4A4F73") : th.C_GRID);
     if (!core) return;
 
     for (var y = 0; y < H; y++) {
@@ -364,9 +366,9 @@
       }
     }
 
-    if (runner.animating) {
-      g.fillStyle = runner.anim_step % 2 ? "#FFFFFF" : th.C_CYAN;
-      runner.clearing.forEach(function (ry) {
+    if (anim) {
+      g.fillStyle = anim[1] % 2 ? "#FFFFFF" : th.C_CYAN;
+      anim[0].forEach(function (ry) {
         for (var x = 0; x < W; x++) g.fillRect(x * c + 1, ry * c + 1, c - 2, c - 2);
       });
     }
@@ -394,8 +396,10 @@
         }
       }
     }
+  }
 
-    // incoming garbage gauge (multiplayer)
+  /** incoming garbage gauge (multiplayer) */
+  function drawGauge(g, core, c) {
     if (core.incoming > 0) {
       var n = Math.min(core.incoming, H);
       g.fillStyle = "#FF3B3B";
@@ -408,6 +412,14 @@
       g.textBaseline = "middle";
       g.fillText(String(core.incoming), W * c - 10, (H - n) * c - 8);
     }
+  }
+
+  function drawBoard() {
+    var g = ctx, c = cell, core = runner ? runner.core : null;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawBoardCore(g, core, c, runner && runner.animating ? [runner.clearing, runner.anim_step] : null, bgCanvas);
+    if (!core) return;
+    drawGauge(g, core, c);
 
     // overlays
     if (ended()) { drawGameOver(g); return; }
@@ -888,6 +900,7 @@
       ["APM", mins > 0.05 ? Math.round(core.stats.actions / mins) : 0]
     ]);
     el.oResult.style.display = lastSummary ? "" : "none";
+    el.oReplay.style.display = lastSummary && lastSummary.replay && NT.UI.openReplay ? "" : "none";
     showPage("pgOver");
   }
 
@@ -1620,6 +1633,9 @@
     el.pRestart.addEventListener("click", function () { startGame({ mode: runner ? runner.mode : "classic" }); });
     el.pMenu.addEventListener("click", goMenu);
     el.oResult.addEventListener("click", function () { if (lastSummary) openResults(lastSummary); });
+    el.oReplay.addEventListener("click", function () {      // replay_last
+      if (lastSummary && lastSummary.replay && NT.UI.openReplay) NT.UI.openReplay(lastSummary.replay);
+    });
     el.oAgain.addEventListener("click", playAgain);
     el.oMenu.addEventListener("click", goMenu);
     el.sBack.addEventListener("click", closeSettings);
@@ -1720,7 +1736,9 @@
     get screen() { return screen; },
     get lastSummary() { return lastSummary; },
     get lastRank() { return lastRank; },
-    helpers: { mix: mix, lighten: lighten, darken: darken, drawCell: drawCell }
+    helpers: { mix: mix, lighten: lighten, darken: darken, drawCell: drawCell, drawGrid: drawGrid,
+               drawBoardCore: drawBoardCore, drawGauge: drawGauge, drawMini: drawMini, FONT: FONT },
+    get dpr() { return dpr; }
   };
 
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", init);
