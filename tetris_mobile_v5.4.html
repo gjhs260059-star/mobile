@@ -4,7 +4,11 @@
   Mobile web port of NEON CYBERPUNK TETRIS v5.3 (tetris.py).
   Stage 1: core game (7-bag, NEXT 3, HOLD, ghost, lock delay, SRS, combo, B2B,
   T-spin, perfect clear, level mode) + touch controls + menus + settings.
-  Files: core_v5.4.js (game logic, window.NT) · ui_v5.4.js (canvas / input / menus) · style_v5.4.css
+  Stage 2: sprint 40 lines, TOP 5, detailed / cumulative stats, achievements,
+  6 themes + custom theme, effects, sound settings (BGM / SFX), background image.
+  Files: core_v5.4.js (game logic, window.NT) · stores_v5.4.js (records / stats / achievements)
+         themes_v5.4.js (themes + block styles) · effects_v5.4.js (particles / banners)
+         audio_v5.4.js (Web Audio SFX + BGM) · ui_v5.4.js (canvas / input / menus) · style_v5.4.css
 -->
 <html lang="ko">
 <head>
@@ -22,7 +26,7 @@
 <div id="app">
   <div id="game">
     <div id="top">
-      <div id="boardWrap"><canvas id="board"></canvas></div>
+      <div id="boardWrap"><canvas id="board"></canvas><canvas id="fxCv"></canvas></div>
       <div id="side">
         <!-- 관전 패널 (stage 4 에서 채워짐) - 상대 점수는 표시하지 않음 -->
         <div id="spec" class="panel">
@@ -38,9 +42,13 @@
           <div class="panel" id="holdBox"><div class="plabel pink">HOLD</div><canvas id="holdCv"></canvas></div>
         </div>
         <div class="panel" id="statsBox">
+          <div class="modeTitle" id="vMode">TETRIS</div>
           <div class="stat big"><span class="k">SCORE</span><span class="v" id="vScore">0</span></div>
+          <div class="stat best"><span class="k">BEST</span><span class="v" id="vBest">0</span></div>
           <div class="stat"><span class="k">LINES</span><span class="v" id="vLines">0</span></div>
-          <div class="stat"><span class="k">LEVEL</span><span class="v" id="vLevel">-</span></div>
+          <div class="stat" id="rowLevel"><span class="k">LEVEL</span><span class="v" id="vLevel">-</span></div>
+          <div class="stat"><span class="k">TIME</span><span class="v" id="vTime">0:00.00</span></div>
+          <div class="stat"><span class="k">APM</span><span class="v" id="vApm">0</span></div>
         </div>
         <div id="mini">
           <button class="mbtn pink" id="bHold">HOLD</button>
@@ -64,14 +72,17 @@
   <div style="flex:1 1 0"></div>
   <h1 class="title cyan">NEON</h1>
   <h1 class="title pink">TETRIS</h1>
+  <div class="sub best" id="menuBest">BEST 0 | SPRINT -- | 🏆 0/0</div>
   <div class="sub" id="menuSub">v5.4-mobile</div>
   <div class="menuBtns">
     <button class="btn" id="mClassic">일반 모드</button>
     <button class="btn pink" id="mLevel">레벨업 모드: ON</button>
-    <button class="btn" disabled>스프린트 모드 (40줄)<span class="tag">준비 중</span></button>
-    <button class="btn" disabled>기록 및 통계<span class="tag">준비 중</span></button>
-    <button class="btn" disabled>멀티플레이 (온라인 대전)<span class="tag">준비 중</span></button>
-    <button class="btn" disabled>리플레이<span class="tag">준비 중</span></button>
+    <button class="btn" id="mSprint">스프린트 모드 (40줄)</button>
+    <button class="btn" id="mStats">기록 및 통계</button>
+    <button class="btn" id="mMulti" disabled>멀티플레이 (온라인 대전)<span class="tag">준비 중</span></button>
+    <button class="btn" id="mReplay" disabled>리플레이<span class="tag">준비 중</span></button>
+    <button class="btn" id="mAch">업적</button>
+    <button class="btn" id="mTheme">스킨 및 테마</button>
     <button class="btn" id="mSettings">설정</button>
   </div>
   <div style="flex:1 1 0"></div>
@@ -92,8 +103,9 @@
 <!-- 게임 오버 -->
 <div class="page dim" id="pgOver">
   <div class="card">
-    <h2 style="color:var(--pink)">GAME OVER</h2>
+    <h2 style="color:var(--pink)" id="overTitle">GAME OVER</h2>
     <div class="res" id="overInfo"></div>
+    <button class="btn" id="oResult">📊 결과</button>
     <button class="btn" id="oAgain">다시 하기</button>
     <button class="btn pink" id="oMenu">☰ 메뉴</button>
   </div>
@@ -105,9 +117,21 @@
   <div id="settingsBody" style="display:contents"></div>
 </div>
 
+<!-- 기록 및 통계 / 결과 / 업적 / 테마 (ui_v5.4.js 가 채움) -->
+<div class="page" id="pgView">
+  <div class="hdr"><h2 id="vTitle"></h2><button class="btn pink" id="vBack">← 메뉴</button></div>
+  <div class="hline"></div>
+  <div id="viewBody" class="vbody"></div>
+</div>
+
+<input type="file" id="bgFile" accept="image/*" style="display:none">
 <div id="ver">v5.4-mobile</div>
 
 <script src="core_v5.4.js"></script>
+<script src="stores_v5.4.js"></script>
+<script src="themes_v5.4.js"></script>
+<script src="effects_v5.4.js"></script>
+<script src="audio_v5.4.js"></script>
 <script src="ui_v5.4.js"></script>
 </body>
 </html>
