@@ -15,6 +15,9 @@
  *   NT.UI.stores, NT.UI.fx, NT.UI.spec.*, NT.UI.openReplay (set by replay_v5.4.js)
  * Stage 3: replays (replay_v5.4.js) - every game is recorded; drawBoardCore is shared with
  *          the replay player like tetris.py draw_board.
+ * Stage 4: multiplayer (multi_v5.4.js) plugs in through NT.UI.onGameMenu / onGameKey /
+ *          onMultiAgain / openMulti, runner.alive_text / idle_text / match_result and
+ *          scheduleResults; settings also keep nickname / multi_rules / custom_rules (tetris.py keys).
  */
 (function (global) {
   "use strict";
@@ -66,7 +69,10 @@
     sfx_volume: 70,
     fx_particles: true,
     fx_combo: true,
-    fx_perfect: true
+    fx_perfect: true,
+    nickname: "",                              // multiplayer (tetris.py nickname / multi_rules / custom_rules)
+    multi_rules: NT.sanitizeRules(null),
+    custom_rules: null
   };
   var rawSettings = {};
 
@@ -109,6 +115,12 @@
       var v = data[p[0]];
       if (isNum(v)) settings[p[1]] = clamp(Math.trunc(v), 0, 100);
     });
+    settings.multi_rules = NT.sanitizeRules(data.multi_rules);
+    var cr = data.custom_rules;
+    if (cr && typeof cr === "object" && !Array.isArray(cr)) settings.custom_rules = NT.sanitizeRules(cr);
+    if (typeof data.nickname === "string" && data.nickname.trim()) {
+      settings.nickname = Array.from(data.nickname.trim()).slice(0, 20).join("");
+    }
   }
 
   function saveSettings() {
@@ -125,7 +137,10 @@
       bgm_volume: settings.bgm_volume,
       sfx_volume: settings.sfx_volume,
       sensitivity: settings.sensitivity,
-      touch: settings.touch
+      touch: settings.touch,
+      nickname: settings.nickname,
+      multi_rules: settings.multi_rules,
+      custom_rules: settings.custom_rules
     });
     if (store.set("settings", data)) rawSettings = data;
   }
@@ -255,7 +270,7 @@
   var el = {};
   ["app", "top", "boardWrap", "board", "fxCv", "side", "spec", "specCv", "specName", "specPrev", "specNext",
    "pv", "nextBox", "holdBox", "nextCv", "holdCv", "statsBox", "vMode", "vScore", "vBest", "vLines", "vLevel",
-   "vTime", "vApm", "mini",
+   "vTime", "vApm", "mini", "kBest", "kLevel", "bTarget", "mMulti", "pauseTitle", "oWatch",
    "bHold", "bSoft", "bCcw", "bPause", "status", "controls", "bLeft", "bRot", "bRight",
    "pgMenu", "pgPause", "pgOver", "pgSettings", "pgView", "settingsBody", "viewBody", "vTitle", "vBack",
    "menuSub", "menuBest", "mClassic", "mLevel", "mSprint", "mStats", "mAch", "mTheme",
@@ -505,7 +520,7 @@
       spec.data = data ? NT.parseBoard(data) : null;
       if (name !== undefined) {
         spec.name = name || "";
-        var label = "👁 " + (spec.name || "상대 화면");
+        var label = spec.name || "👁 상대 화면";
         if (total) label += " (" + idx + "/" + total + ")";
         el.specName.textContent = label;
       }
@@ -575,7 +590,7 @@
       best = b ? NT.fmtTime(b) : "--";
       lines = Math.min(core.lines, SPRINT_LINES) + " / " + SPRINT_LINES;
     } else if (mode === "multi") {
-      best = runner.alive_text || "-";
+      best = runner.alive_text || "-";          // tetris.py: ALIVE n/m  |  LINES n  |  ATK n
       lines = String(core.lines);
     } else {
       best = num(Math.max(scores.best(), core.score));
@@ -583,9 +598,12 @@
     }
     if (best !== lastBest) { el.vBest.textContent = best; lastBest = best; }
     if (lines !== lastLines) { el.vLines.textContent = lines; lastLines = lines; }
-    var lv = runner.level_mode ? String(core.current_level()) : "-";
+    var lv = mode === "multi" ? String(core.stats.attack) : runner.level_mode ? String(core.current_level()) : "-";
     if (lv !== lastLevel) { el.vLevel.textContent = lv; lastLevel = lv; }
-    var st = runner.status || (runner.started && !ended() ? "게임 진행 중" : "");
+    var kb = mode === "multi" ? "ALIVE" : "BEST", kl = mode === "multi" ? "ATK" : "LEVEL";
+    if (el.kBest.textContent !== kb) el.kBest.textContent = kb;
+    if (el.kLevel.textContent !== kl) el.kLevel.textContent = kl;
+    var st = runner.status || (runner.started && !ended() ? (runner.idle_text || "게임 진행 중") : "");
     if (st !== lastStatus) { el.status.textContent = st; lastStatus = st; }
     el.bHold.style.opacity = core.hold_used ? "0.45" : "1";
     updateTimeLabel();
@@ -855,7 +873,15 @@
 
   function leaveGame() {
     clearTimeout(overTimer);
-    if (runner) runner.leave_screen(now());
+    if (!runner) return;
+    if (runner.mode === "multi") runner.releaseAll();     // a versus game never pauses (tetris.py pause())
+    else runner.leave_screen(now());
+  }
+
+  /** the game screen's ☰ menu (tetris.py go_menu): multiplayer leaves the match / room first */
+  function gameMenu() {
+    if (NT.UI.onGameMenu) NT.UI.onGameMenu();
+    goMenu();
   }
 
   function goMenu() {
@@ -870,12 +896,31 @@
   function fillPause() {
     if (!runner) return;
     var core = runner.core;
+    el.pauseTitle.textContent = "PAUSED";
+    el.pRestart.style.display = "";
+    el.pMenu.textContent = "☰ 메뉴";
     el.pauseInfo.innerHTML = resRows([
       ["SCORE", num(core.score)],
       ["LINES", runner.mode === "sprint" ? Math.min(core.lines, SPRINT_LINES) + " / " + SPRINT_LINES : core.lines],
       ["LEVEL", runner.level_mode ? core.current_level() : "-"],
       ["TIME", NT.fmtTime(runner.ms())]
     ]);
+  }
+
+  /** versus: Ⅱ / Esc show this instead of pausing (the match goes on; ☰ = leave = eliminated) */
+  function showMatchCard() {
+    if (!runner) return;
+    var core = runner.core;
+    el.pauseTitle.textContent = "VERSUS";
+    el.pauseInfo.innerHTML = resRows([
+      ["ALIVE", esc(runner.alive_text || "-")],
+      ["LINES", core.lines],
+      ["ATK", core.stats.attack],
+      ["TIME", NT.fmtTime(runner.ms())]
+    ]) + '<span class="warn">대전은 멈추지 않아요. 지금 나가면 탈락(패배) 처리돼요.</span>';
+    el.pRestart.style.display = "none";
+    el.pMenu.textContent = "☰ 나가기 (탈락 처리)";
+    showPage("pgPause");
   }
 
   function resRows(rows) {
@@ -889,16 +934,20 @@
     if (!runner || !ended()) return;
     clearTimeout(overTimer);
     var core = runner.core, ms = lastSummary ? lastSummary.time_ms : runner.ms(), mins = ms / 60000;
-    var sprintMode = runner.mode === "sprint";
-    el.overTitle.textContent = sprintMode ? (core.finished ? "SPRINT CLEAR!" : "SPRINT FAILED") : "GAME OVER";
-    el.overTitle.style.color = sprintMode && core.finished ? "var(--cyan)" : "var(--pink)";
+    var sprintMode = runner.mode === "sprint", multi = runner.mode === "multi";
+    var mr = multi ? runner.match_result : null;
+    el.overTitle.textContent = multi ? (mr && mr.won ? "VICTORY!" : "ELIMINATED")
+      : sprintMode ? (core.finished ? "SPRINT CLEAR!" : "SPRINT FAILED") : "GAME OVER";
+    el.overTitle.style.color = (sprintMode && core.finished) || (mr && mr.won) ? "var(--cyan)" : "var(--pink)";
     el.overInfo.innerHTML = resRows([
-      ["SCORE", num(core.score)],
+      multi ? ["순위", esc(mr && mr.text ? mr.text : "결과 대기 중...")] : ["SCORE", num(core.score)],
       ["LINES", core.lines],
-      ["LEVEL", runner.level_mode ? core.current_level() : "-"],
+      multi ? ["ATK", core.stats.attack] : ["LEVEL", runner.level_mode ? core.current_level() : "-"],
       ["TIME", NT.fmtTime(ms)],
       ["APM", mins > 0.05 ? Math.round(core.stats.actions / mins) : 0]
     ]);
+    el.oAgain.textContent = multi ? "대기실로 (다음 판)" : "다시 하기";
+    el.oWatch.style.display = multi && spec.visible ? "" : "none";
     el.oResult.style.display = lastSummary ? "" : "none";
     el.oReplay.style.display = lastSummary && lastSummary.replay && NT.UI.openReplay ? "" : "none";
     showPage("pgOver");
@@ -1061,9 +1110,9 @@
     section(inner, "최근 플레이 (최대 " + S.MAX_HISTORY + "판 보관)");
     var hist = stats.data.history.slice().reverse().slice(0, 40);
     if (!hist.length) { plain(inner, "아직 플레이 기록이 없어요."); return; }
-    var names = { cleared: "완주", gameover: "게임오버", aborted: "중단" };
+    var names = { cleared: "완주", gameover: "게임오버", aborted: "중단", win: "승리" };
     kvRows(inner, hist.map(function (h) {
-      var mode = h.mode === "sprint" ? "스프린트" : "일반";
+      var mode = h.mode === "sprint" ? "스프린트" : h.mode === "multi" ? "멀티" : "일반";
       var val = (h.mode === "sprint" && h.outcome === "cleared") ? NT.fmtTime(h.time_ms)
         : num(h.score) + "점 · " + (h.lines || 0) + "줄";
       return [String(h.date === undefined ? "" : h.date).slice(0, 16) + "  " + mode + "  " + (names[h.outcome] || ""), val];
@@ -1465,13 +1514,17 @@
       if (screen === "settings") closeSettings();
       else if (screen === "game") {
         if (el.pgPause.classList.contains("show")) resumeGame();
-        else if (el.pgOver.classList.contains("show")) goMenu();
+        else if (el.pgOver.classList.contains("show")) gameMenu();
         else if (ended()) showOverCard();
+        else if (runner && runner.mode === "multi") showMatchCard();
         else if (runner) runner.pause(now());
-      } else if (screen !== "menu") goMenu();
+      } else if (screen === "lobby" || screen === "waiting") (viewBack || goMenu)();
+      else if (screen !== "menu") goMenu();
       return;
     }
     if (screen !== "game" || !runner) return;
+    if (!el.pgPause.classList.contains("show") && !el.pgOver.classList.contains("show") &&
+        NT.UI.onGameKey && NT.UI.onGameKey(key)) { e.preventDefault(); return; }   // versus: Tab / V
     var action = actionOf(key);
     if (action === null) return;
     e.preventDefault();
@@ -1611,8 +1664,10 @@
     bindTap(el.bPause, function () {
       if (!runner || screen !== "game") return;
       if (ended()) showOverCard();
+      else if (runner.mode === "multi") showMatchCard();
       else runner.pause(now());
     });
+    bindTap(el.bTarget, function () { if (NT.UI.onTarget) NT.UI.onTarget(); });
     bindTap(el.specPrev, function () { if (spec.onPrev) spec.onPrev(); });
     bindTap(el.specNext, function () { if (spec.onNext) spec.onNext(); });
 
@@ -1629,15 +1684,17 @@
     el.mAch.addEventListener("click", openAchievements);
     el.mTheme.addEventListener("click", function () { openThemes(null); });
     el.mSettings.addEventListener("click", openSettings);
+    el.mMulti.addEventListener("click", function () { if (NT.UI.openMulti) NT.UI.openMulti(); });
     el.pResume.addEventListener("click", resumeGame);
     el.pRestart.addEventListener("click", function () { startGame({ mode: runner ? runner.mode : "classic" }); });
-    el.pMenu.addEventListener("click", goMenu);
+    el.pMenu.addEventListener("click", gameMenu);
     el.oResult.addEventListener("click", function () { if (lastSummary) openResults(lastSummary); });
     el.oReplay.addEventListener("click", function () {      // replay_last
       if (lastSummary && lastSummary.replay && NT.UI.openReplay) NT.UI.openReplay(lastSummary.replay);
     });
     el.oAgain.addEventListener("click", playAgain);
-    el.oMenu.addEventListener("click", goMenu);
+    el.oMenu.addEventListener("click", gameMenu);
+    el.oWatch.addEventListener("click", function () { hidePages(); screen = "game"; dirty = true; });
     el.sBack.addEventListener("click", closeSettings);
     el.vBack.addEventListener("click", function () { (viewBack || goMenu)(); });
     el.bgFile.addEventListener("change", onBgFile);
@@ -1658,7 +1715,10 @@
 
     // no context menu / selection / pinch
     ["contextmenu", "selectstart", "dragstart", "gesturestart"].forEach(function (t) {
-      doc.addEventListener(t, function (e) { e.preventDefault(); });
+      doc.addEventListener(t, function (e) {
+        if (e.target && e.target.closest && e.target.closest("input, textarea")) return;   // text fields (nickname / code)
+        e.preventDefault();
+      });
     });
     doc.addEventListener("touchmove", function (e) {
       if (!e.target.closest || !e.target.closest(".page")) e.preventDefault();
@@ -1667,6 +1727,7 @@
     // app hidden / focus lost -> release keys, pause (leave_game_screen)
     doc.addEventListener("visibilitychange", function () {
       if (doc.hidden && runner && screen === "game") {
+        if (runner.mode === "multi") { runner.releaseAll(); return; }     // versus never pauses
         runner.leave_screen(now());
         if (runner.paused) { showPage("pgPause"); fillPause(); }
       }
@@ -1727,8 +1788,18 @@
       saveSettings();
     },
     showOverCard: showOverCard,
+    showMatchCard: showMatchCard,
+    scheduleResults: scheduleResults,
+    markDirty: function () { dirty = true; },
+    hidePages: hidePages,
+    gameMenu: gameMenu,
     openReplay: null,
     onMultiAgain: null,
+    onGameMenu: null,          // stage 4: called by the game screen's ☰ (go_menu) before the menu opens
+    onGameKey: null,           // stage 4: (key) -> true if handled (Tab = target, V = spectate)
+    onTarget: null,            // stage 4: 🎯 button
+    openMulti: null,           // stage 4: menu "멀티플레이"
+    get cell() { return cell; },
     layout: layout,
     play: play,
     setTrack: setTrack,

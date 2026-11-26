@@ -186,6 +186,11 @@ test("sanitizers", () => {
   assert.strictEqual(r.combo_pct, 50);
   const l = NT.sanitizeLimits({ bob: { no_hold: 1, junk: true }, eve: {} });
   assert.deepStrictEqual(JSON.parse(JSON.stringify(l)), { bob: { no_hold: true } });
+  // a nickname "__proto__" (from JSON) stays an own key and never changes the prototype
+  const lp = NT.sanitizeLimits(JSON.parse('{"__proto__": {"no_ghost": true}, "amy": {"no_tspin": 1}}'));
+  assert.ok(Object.prototype.hasOwnProperty.call(lp, "__proto__"));
+  assert.strictEqual(lp.no_ghost, undefined);
+  assert.strictEqual(lp.amy.no_tspin, true);
   assert.strictEqual(NT.pyRound(0.5), 0);
   assert.strictEqual(NT.pyRound(1.5), 2);
   assert.strictEqual(NT.pyRound(2.5), 2);

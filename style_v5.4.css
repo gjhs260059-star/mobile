@@ -423,3 +423,48 @@ button {
 .rpBtns .btn.rpSpd.on { background: var(--cyan); color: var(--bg); }
 .rpHelp { font-size: 11px; }
 @media (pointer: coarse) { .rpHelp { display: none; } }
+
+/* ================= stage 4: multiplayer (multi_v5.4.js) ================= */
+#bTarget { display: none; grid-column: 1 / -1; height: 34px; color: #FFEA00; border-color: rgba(255, 234, 0, 0.25);
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.multi-on #bTarget { display: block; }
+#specCv { cursor: pointer; touch-action: none; }
+.res .warn { grid-column: 1 / -1; font-size: 12px; color: var(--pink); text-align: center; margin-top: 4px; }
+
+.vbody.mp .note { line-height: 1.45; }
+.inp { flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--grid);
+       background: var(--bg); color: var(--text); font: inherit; font-size: 16px; outline: none;
+       -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+.inp:focus { border-color: var(--cyan); }
+.inp.code { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 3px; text-transform: uppercase; }
+.inp.num { width: 100%; min-height: 34px; padding: 4px 6px; text-align: center; font-size: 15px; }
+.mrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.mrow.end { justify-content: flex-end; }
+.mrow .btn.small, .codeBtns .btn.small, .presets .btn.small { align-self: auto; margin: 0; flex: 0 0 auto; padding: 6px 12px; }
+.mstatus { min-height: 20px; font-size: 13px; font-weight: 700; color: var(--pink); margin-top: 8px; white-space: pre-wrap; }
+.mstatus.flash { animation: mflash 0.9s ease 2; }
+@keyframes mflash { 50% { color: #FFEA00; } }
+.codeBox { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; margin: 4px 0 2px;
+           border: 2px solid var(--cyan); border-radius: 12px; background: var(--bg); }
+.codeLbl { font-size: 12px; color: var(--dim); }
+.codeTxt { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 38px; font-weight: 900; letter-spacing: 8px;
+           color: var(--cyan); text-shadow: 0 0 12px rgba(0, 245, 255, 0.5); -webkit-user-select: text; user-select: text; }
+.codeBtns { display: flex; gap: 8px; }
+.mcount { font-size: 15px; font-weight: 800; color: var(--pink); margin: 8px 0 2px; }
+.rulesSum { font-size: 12px; color: var(--cyan); white-space: pre-wrap; line-height: 1.45; margin: 2px 0 4px; }
+.mbox { border: 1px solid var(--grid); border-radius: 10px; padding: 6px 8px; margin: 4px 0; background: var(--panel); }
+.mboxT { font-size: 13px; font-weight: 800; color: var(--pink); margin-bottom: 4px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets .btn.small { min-height: 34px; font-size: 13px; padding: 4px 10px; }
+.rgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 8px; margin: 8px 0 2px; }
+.rcell { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--text); }
+.limRow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.limTog { flex: 1 1 28%; min-height: 36px; border-radius: 8px; background: var(--btn); color: var(--text); font-size: 13px;
+          font-weight: 700; touch-action: manipulation; }
+.limTog.on { background: var(--pink); color: var(--bg); }
+.plist { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.pitem { display: block; width: 100%; text-align: left; padding: 8px 10px; min-height: 38px; border-radius: 8px;
+         border: 1px solid var(--grid); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.35;
+         touch-action: manipulation; word-break: break-all; }
+.pitem.ready { border-color: rgba(0, 245, 255, 0.35); }
+.pitem.sel { border-color: var(--cyan); background: var(--btn); box-shadow: 0 0 0 1px var(--cyan) inset; }

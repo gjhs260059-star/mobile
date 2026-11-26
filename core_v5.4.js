@@ -139,7 +139,9 @@
         if (isDict(d)) {
           var lim = {}, any = false;
           LIMIT_KEYS.forEach(function (k) { if (d[k[0]]) { lim[k[0]] = true; any = true; } });
-          if (any) out[Array.from(String(nick)).slice(0, 20).join("")] = lim;
+          // defineProperty: a nickname such as "__proto__" stays an own key (no prototype change)
+          if (any) Object.defineProperty(out, Array.from(String(nick)).slice(0, 20).join(""),
+                                         { value: lim, enumerable: true, writable: true, configurable: true });
         }
       });
     }
